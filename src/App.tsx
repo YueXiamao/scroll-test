@@ -23,9 +23,9 @@ function Home() {
         <div className="floating-icons">
           <div className="fi fi-1">📱</div>
           <div className="fi fi-2">🕳️</div>
-          <div className="fi fi-3">🔍</div>
-          <div className="fi fi-4">✨</div>
-          <div className="fi fi-5">🛒</div>
+          <div className="fi fi-3">✨</div>
+          <div className="fi fi-4">🎯</div>
+          <div className="fi fi-5">💫</div>
         </div>
         <h1 className="title">
           <span className="title-icon">🫣</span>
@@ -38,7 +38,7 @@ function Home() {
         </p>
         <button className="start-btn" onClick={() => setPage('test')}>
           <span className="btn-icon">👆</span>
-          开始测试
+          <span>开始测试</span>
           <span className="btn-icon">👆</span>
         </button>
         <div className="stats-row">
@@ -73,14 +73,18 @@ function Home() {
 function Test() {
   const [current, setCurrent] = useState(0);
   const [scores, setScores] = useState<ScoreType>({ beauty: 0, ootd: 0, news: 0, cute: 0, food: 0, tech: 0, funny: 0, travel: 0 });
+  const [history, setHistory] = useState<ScoreType[]>([]);
   const [animating, setAnimating] = useState(false);
 
   const q = questions[current];
   const progress = ((current) / questions.length) * 100;
+  const isFirst = current === 0;
+  const isLast = current === questions.length - 1;
 
-  const selectOption = (scores_delta: ScoreType) => {
+  const handleSelect = (scores_delta: ScoreType) => {
     if (animating) return;
     setAnimating(true);
+
     const newScores = {
       beauty: scores.beauty + scores_delta.beauty,
       ootd: scores.ootd + scores_delta.ootd,
@@ -91,16 +95,34 @@ function Test() {
       funny: scores.funny + scores_delta.funny,
       travel: scores.travel + scores_delta.travel,
     };
+
     setTimeout(() => {
-      if (current < questions.length - 1) {
-        setScores(newScores);
-        setCurrent(prev => prev + 1);
-      } else {
+      if (isLast) {
         sessionStorage.setItem('scroll_scores', JSON.stringify(newScores));
         setPage('result');
+      } else {
+        setHistory(prev => [...prev, scores]);
+        setScores(newScores);
+        setCurrent(prev => prev + 1);
       }
       setAnimating(false);
     }, 300);
+  };
+
+  const handlePrev = () => {
+    if (isFirst || animating) return;
+    if (history.length > 0) {
+      const prevScores = history[history.length - 1];
+      setScores(prevScores);
+      setHistory(prev => prev.slice(0, -1));
+      setCurrent(prev => prev - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (isLast || animating) return;
+    const neutralDelta: ScoreType = { beauty: 0, ootd: 0, news: 0, cute: 0, food: 0, tech: 0, funny: 0, travel: 0 };
+    handleSelect(neutralDelta);
   };
 
   return (
@@ -111,7 +133,7 @@ function Test() {
         </div>
         <div className="progress-text">
           <span>第 {current + 1} / {questions.length} 题</span>
-          <span className="progress-dim">正在分析你的刷手机人格...</span>
+          <span className="progress-dim">你的刷手机人格正在形成...</span>
         </div>
       </div>
       <div className="question-area">
@@ -122,7 +144,7 @@ function Test() {
             <button
               key={i}
               className={`option-btn ${animating ? 'disabled' : ''}`}
-              onClick={() => selectOption(opt.scores)}
+              onClick={() => handleSelect(opt.scores)}
             >
               <span className="option-letter">{String.fromCharCode(65 + i)}</span>
               <span className="option-text">{opt.text}</span>
@@ -130,6 +152,26 @@ function Test() {
           ))}
         </div>
       </div>
+
+      <div className="nav-buttons">
+        <button
+          className="nav-btn prev"
+          onClick={handlePrev}
+          disabled={isFirst}
+        >
+          ← 上一题
+        </button>
+        {!isLast && (
+          <button
+            className="nav-btn next"
+            onClick={handleNext}
+            disabled={isLast}
+          >
+            跳过此题 →
+          </button>
+        )}
+      </div>
+
       <div className="floating-mini">
         <div className="mini-icon">📱</div>
         <div className="mini-icon">🕳️</div>
@@ -165,7 +207,6 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
   const cx = 200, cy = 200, r = 150;
   const step = (2 * Math.PI) / categories.length;
 
-  // 8边形顶点
   const points = categories.map((cat, i) => {
     const angle = -Math.PI / 2 + i * step;
     const pct = percentages[cat] || 0;
@@ -178,13 +219,11 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
     };
   });
 
-  // 外边框点（100%）
   const borderPoints = categories.map((_, i) => {
     const angle = -Math.PI / 2 + i * step;
     return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
   });
 
-  // 内部网格（30%, 60%）
   const gridPaths = [0.3, 0.6, 0.9].map(level => {
     const pts = categories.map((_, i) => {
       const angle = -Math.PI / 2 + i * step;
@@ -206,13 +245,10 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
           </feMerge>
         </filter>
       </defs>
-      {/* 网格 */}
       {gridPaths.map((pts, i) => (
-        <polygon key={i} points={pts} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+        <polygon key={i} points={pts} fill="none" stroke="rgba(255,107,107,0.15)" strokeWidth="1" />
       ))}
-      {/* 边框 */}
-      <polygon points={borderPoints.join(' ')} fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
-      {/* 轴线 */}
+      <polygon points={borderPoints.join(' ')} fill="none" stroke="rgba(255,107,107,0.25)" strokeWidth="1" />
       {categories.map((_, i) => {
         const angle = -Math.PI / 2 + i * step;
         return (
@@ -222,29 +258,26 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
             y1={cy}
             x2={cx + r * Math.cos(angle)}
             y2={cy + r * Math.sin(angle)}
-            stroke="rgba(255,255,255,0.1)"
+            stroke="rgba(255,107,107,0.12)"
             strokeWidth="1"
           />
         );
       })}
-      {/* 数据区域 */}
-      <path d={dataPath} fill="rgba(129, 140, 248, 0.25)" stroke="#818CF8" strokeWidth="2" filter="url(#glow)" />
-      {/* 数据点 */}
+      <path d={dataPath} fill="rgba(255, 107, 107, 0.2)" stroke="#FF6B6B" strokeWidth="2" filter="url(#glow)" />
       {points.map((p, i) => (
         <circle
           key={i}
           cx={p.x}
           cy={p.y}
-          r="5"
+          r="6"
           fill={colors[p.cat]}
           stroke="#fff"
-          strokeWidth="1.5"
+          strokeWidth="2"
         />
       ))}
-      {/* 标签 */}
       {points.map((p, i) => {
         const angle = -Math.PI / 2 + i * step;
-        const labelR = r + 24;
+        const labelR = r + 26;
         const lx = cx + labelR * Math.cos(angle);
         const ly = cy + labelR * Math.sin(angle);
         const anchor = Math.abs(lx - cx) < 20 ? 'middle' : lx > cx ? 'start' : 'end';
@@ -255,7 +288,7 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
             y={ly + 5}
             textAnchor={anchor}
             fill={colors[p.cat]}
-            fontSize="12"
+            fontSize="13"
             fontWeight="bold"
           >
             {labels[p.cat]}
@@ -287,7 +320,7 @@ function Result() {
     beauty: '#FF6B9D',
     ootd: '#C44DFF',
     news: '#4D9DFF',
-    cute: '#FF9D4D',
+    cute: '#FF9F43',
     food: '#FFDD4D',
     tech: '#4DFF9D',
     funny: '#FF4D6B',
@@ -372,6 +405,13 @@ function App() {
 
   return (
     <div className="app">
+      <div className="bg-animated">
+        <div className="bg-blob bg-blob-1" />
+        <div className="bg-blob bg-blob-2" />
+        <div className="bg-blob bg-blob-3" />
+        <div className="bg-blob bg-blob-4" />
+        <div className="bg-grid" />
+      </div>
       <header className="app-header">
         <button className="header-logo" onClick={() => setPage('home')}>
           🫣 Scroll Master
