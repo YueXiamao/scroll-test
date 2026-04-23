@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { questions, type ScoreType } from './data/questions';
-import { calculateDimensionPercentages, getOverallType } from './data/catTypes';
+import { calculateDimensionPercentages, getTitleForCategory, getOverallType } from './data/catTypes';
 import './App.css';
 
 type Page = 'home' | 'test' | 'result';
@@ -16,11 +16,18 @@ function setPage(page: Page) {
   window.location.hash = page;
 }
 
-// SVG Arrow icon
-function ArrowIcon() {
+function ArrowRight() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function ArrowLeft() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M13 8H3M3 8L7 4M3 8L7 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -29,51 +36,36 @@ function Home() {
   return (
     <div className="home-page">
       <div className="hero-left">
-        <p className="hero-eyebrow">Personality Test</p>
+        <p className="hero-eyebrow">性格测试</p>
         <h1 className="hero-title">
-          <span>What Do</span>
-          <span>You</span>
-          <span>Scroll</span>
+          <span>你到底</span>
+          <span>爱刷</span>
+          <span>什么</span>
         </h1>
         <p className="hero-subtitle">
-          18 questions to reveal the content that truly defines your digital life.
+          18道题，揭开你灵魂深处的数字内容偏好。
         </p>
         <button className="hero-cta" onClick={() => setPage('test')}>
-          Begin the test
-          <ArrowIcon />
+          开始测试
+          <ArrowRight />
         </button>
       </div>
       <div className="hero-right">
-        <img
-          className="hero-video"
-          src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1200&q=80"
-          alt="phone scrolling"
-        />
-        <div className="hero-video-overlay" />
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <span className="hero-stat-num">8</span>
-            <span className="hero-stat-label">Content Types</span>
-          </div>
-          <div className="hero-stat">
-            <span className="hero-stat-num">18</span>
-            <span className="hero-stat-label">Questions</span>
-          </div>
-          <div className="hero-stat">
-            <span className="hero-stat-num">3</span>
-            <span className="hero-stat-label">Minutes</span>
-          </div>
+        <div className="hero-bg-canvas">
+          <div className="bg-canvas-blob bg-canvas-blob-1" />
+          <div className="bg-canvas-blob bg-canvas-blob-2" />
+          <div className="bg-canvas-blob bg-canvas-blob-3" />
+          <div className="bg-canvas-blob bg-canvas-blob-4" />
         </div>
+        <div className="hero-grain" />
         <div className="hero-scroll-hint">
-          <span>Scroll</span>
+          <span>滚动</span>
           <div className="hero-scroll-line" />
         </div>
       </div>
     </div>
   );
 }
-
-const TOPIC_LABELS = ['Beauty', 'Fashion', 'News', 'Cute', 'Food', 'Tech', 'Funny', 'Travel'];
 
 function Test() {
   const [current, setCurrent] = useState(0);
@@ -114,7 +106,7 @@ function Test() {
         setSelectedIndex(null);
       }
       setAnimating(false);
-    }, 350);
+    }, 400);
   };
 
   const handlePrev = () => {
@@ -129,27 +121,30 @@ function Test() {
   };
 
   const handleNext = () => {
-    if (isLast || animating) return;
-    const neutralDelta: ScoreType = { beauty: 0, ootd: 0, news: 0, cute: 0, food: 0, tech: 0, funny: 0, travel: 0 };
-    handleSelect(neutralDelta, -1);
+    if (isLast || animating || selectedIndex === null) return;
+    const q = questions[current];
+    handleSelect(q.options[selectedIndex].scores, selectedIndex);
   };
 
   return (
     <div className="test-page">
       <div className="test-left">
-        <p className="test-progress-label">Progress</p>
+        <div className="test-left-bg">
+          <div className="test-left-blob test-left-blob-1" />
+          <div className="test-left-blob test-left-blob-2" />
+        </div>
+        <p className="test-progress-label">进度</p>
         <div className="test-progress-bar">
           <div className="test-progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="test-counter">{String(current + 1).padStart(2, '0')}</div>
-        <p className="test-counter-label">of {questions.length}</p>
-        <p className="test-sidebar-title">Dimensions</p>
-        <div className="test-topics">
-          {TOPIC_LABELS.map((label, i) => (
-            <div key={i} className={`test-topic ${i < current + 1 ? 'active' : ''}`}>
-              <span className="test-topic-dot" />
-              {label}
-            </div>
+        <p className="test-counter-live">第 {current + 1} 题，共 {questions.length} 题</p>
+        <div className="test-dots">
+          {questions.map((_, i) => (
+            <div
+              key={i}
+              className={`test-dot ${i < current ? 'answered' : ''} ${i === current ? 'current' : ''}`}
+            />
           ))}
         </div>
       </div>
@@ -171,19 +166,17 @@ function Test() {
         </div>
         <div className="test-nav">
           <button className="test-nav-btn" onClick={handlePrev} disabled={isFirst}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Previous
+            <ArrowLeft />
+            上一题
           </button>
-          {!isLast && (
-            <button className="test-nav-btn primary" onClick={handleNext}>
-              Skip
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          )}
+          <button
+            className={`test-nav-btn primary ${selectedIndex !== null ? 'enabled' : ''}`}
+            onClick={handleNext}
+            disabled={selectedIndex === null || isLast}
+          >
+            {isLast ? '查看结果' : '下一题'}
+            <ArrowRight />
+          </button>
         </div>
       </div>
     </div>
@@ -193,24 +186,12 @@ function Test() {
 function RadarChart({ percentages }: { percentages: Record<string, number> }) {
   const categories = ['beauty', 'ootd', 'news', 'cute', 'food', 'tech', 'funny', 'travel'];
   const labels: Record<string, string> = {
-    beauty: 'Beauty',
-    ootd: 'Fashion',
-    news: 'News',
-    cute: 'Cute',
-    food: 'Food',
-    tech: 'Tech',
-    funny: 'Funny',
-    travel: 'Travel',
+    beauty: '颜值', ootd: '穿搭', news: '时政', cute: '萌宠',
+    food: '美食', tech: '科技', funny: '搞笑', travel: '旅行',
   };
   const colors: Record<string, string> = {
-    beauty: '#C84B31',
-    ootd: '#8B7355',
-    news: '#4A5568',
-    cute: '#9F7AEA',
-    food: '#D69E2E',
-    tech: '#38A169',
-    funny: '#ED8936',
-    travel: '#4299E1',
+    beauty: '#C84B31', ootd: '#8B7355', news: '#4A5568', cute: '#9F7AEA',
+    food: '#D69E2E', tech: '#38A169', funny: '#ED8936', travel: '#4299E1',
   };
 
   const cx = 200, cy = 200, r = 130;
@@ -280,8 +261,8 @@ function Result() {
   const [visible, setVisible] = useState(false);
 
   const labels: Record<string, string> = {
-    beauty: 'Beauty', ootd: 'Fashion', news: 'News', cute: 'Cute',
-    food: 'Food', tech: 'Tech', funny: 'Funny', travel: 'Travel',
+    beauty: '颜值', ootd: '穿搭', news: '时政', cute: '萌宠',
+    food: '美食', tech: '科技', funny: '搞笑', travel: '旅行',
   };
   const colors: Record<string, string> = {
     beauty: '#C84B31', ootd: '#8B7355', news: '#4A5568', cute: '#9F7AEA',
@@ -301,7 +282,7 @@ function Result() {
   }, []);
 
   if (!catType || !scores) {
-    return <div className="result-loading">Analyzing your profile...</div>;
+    return <div className="result-loading">正在分析你的内容偏好...</div>;
   }
 
   const sortedCategories = Object.entries(percentages).sort((a, b) => b[1] - a[1]) as [string, number][];
@@ -310,8 +291,9 @@ function Result() {
     <div className={`result-page ${visible ? 'visible' : ''}`}>
       <div className="result-hero">
         <div>
-          <p className="result-label">Your Content Persona</p>
+          <p className="result-label">你的内容人格</p>
           <h1 className="result-type-name">{catType.name}</h1>
+          <div className="result-emoji-large">{catType.emoji}</div>
           <p className="result-desc">{catType.description}</p>
         </div>
         <div className="result-radar-wrapper">
@@ -320,15 +302,14 @@ function Result() {
       </div>
 
       <div className="result-categories">
-        <div className="result-categories-header">
-          <span className="result-categories-title">Dimension Breakdown</span>
-        </div>
+        <p className="result-categories-title">维度细分</p>
         <div className="result-categories-list">
           {sortedCategories.map(([cat, pct]) => (
             <div key={cat} className="result-category-item">
               <div className="result-cat-label">
                 <span className="result-cat-dot" style={{ background: colors[cat] }} />
                 <span className="result-cat-name">{labels[cat]}</span>
+                <span className="result-cat-title-text">「{getTitleForCategory(cat, pct)}」</span>
               </div>
               <div className="result-cat-bar-wrap">
                 <div className="result-cat-bar" style={{ width: `${pct}%`, background: colors[cat] }} />
@@ -344,7 +325,7 @@ function Result() {
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 7C2 4.24 4.24 2 7 2C8.38 2 9.63 2.56 10.54 3.46L9 5H13V1L11.54 2.46C10.27 1.23 8.72 0.5 7 0.5C3.41 0.5 0.5 3.41 0.5 7C0.5 10.59 3.41 13.5 7 13.5C10.59 13.5 13.5 10.59 13.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          Retake Test
+          重新测试
         </button>
       </div>
     </div>
@@ -368,9 +349,9 @@ function App() {
           Scroll Master
         </button>
         <nav className="header-nav">
-          <button onClick={() => setPage('home')} className={page === 'home' ? 'active' : ''}>Home</button>
-          <button onClick={() => setPage('test')} className={page === 'test' ? 'active' : ''}>Test</button>
-          <button onClick={() => setPage('result')} className={page === 'result' ? 'active' : ''}>Result</button>
+          <button onClick={() => setPage('home')} className={page === 'home' ? 'active' : ''}>首页</button>
+          <button onClick={() => setPage('test')} className={page === 'test' ? 'active' : ''}>测试</button>
+          <button onClick={() => setPage('result')} className={page === 'result' ? 'active' : ''}>结果</button>
         </nav>
       </header>
       <main className="app-main">
@@ -379,7 +360,7 @@ function App() {
         {page === 'result' && <Result />}
       </main>
       <footer className="app-footer">
-        <p>Scroll Master — Content Persona Test</p>
+        <p>Scroll Master 内容刷手鉴定</p>
         <p>{new Date().getFullYear()}</p>
       </footer>
     </div>
