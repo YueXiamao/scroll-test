@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { questions, type ScoreType } from './data/questions';
-import { calculateDimensionPercentages, getTitleForCategory, getOverallType } from './data/catTypes';
+import { calculateDimensionPercentages, getOverallType } from './data/catTypes';
 import './App.css';
 
 type Page = 'home' | 'test' | 'result';
@@ -16,74 +16,81 @@ function setPage(page: Page) {
   window.location.hash = page;
 }
 
+// SVG Arrow icon
+function ArrowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function Home() {
   return (
-    <div className="page home-page">
-      <div className="hero-section">
-        <div className="floating-icons">
-          <div className="fi fi-1">📱</div>
-          <div className="fi fi-2">🕳️</div>
-          <div className="fi fi-3">✨</div>
-          <div className="fi fi-4">🎯</div>
-          <div className="fi fi-5">💫</div>
-        </div>
-        <h1 className="title">
-          <span className="title-icon">🫣</span>
-          Scroll Master
-          <span className="title-sub">内容刷手鉴定</span>
+    <div className="home-page">
+      <div className="hero-left">
+        <p className="hero-eyebrow">Personality Test</p>
+        <h1 className="hero-title">
+          <span>What Do</span>
+          <span>You</span>
+          <span>Scroll</span>
         </h1>
-        <p className="subtitle">
-          18道题 · 揭开你灵魂深处的癖好<br />
-          测测你到底是什么级别的刷手机选手
+        <p className="hero-subtitle">
+          18 questions to reveal the content that truly defines your digital life.
         </p>
-        <button className="start-btn" onClick={() => setPage('test')}>
-          <span className="btn-icon">👆</span>
-          <span>开始测试</span>
-          <span className="btn-icon">👆</span>
+        <button className="hero-cta" onClick={() => setPage('test')}>
+          Begin the test
+          <ArrowIcon />
         </button>
-        <div className="stats-row">
-          <div className="stat"><span className="stat-num">8</span><span className="stat-label">种内容</span></div>
-          <div className="stat-divider" />
-          <div className="stat"><span className="stat-num">18</span><span className="stat-label">道题目</span></div>
-          <div className="stat-divider" />
-          <div className="stat"><span className="stat-num">3</span><span className="stat-label">分钟</span></div>
-        </div>
       </div>
-      <div className="features-section">
-        <div className="feature-card">
-          <div className="feature-icon">🎯</div>
-          <h3>精准分析</h3>
-          <p>基于8大内容维度，深度解析你的刷手机偏好</p>
+      <div className="hero-right">
+        <img
+          className="hero-video"
+          src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1200&q=80"
+          alt="phone scrolling"
+        />
+        <div className="hero-video-overlay" />
+        <div className="hero-stats">
+          <div className="hero-stat">
+            <span className="hero-stat-num">8</span>
+            <span className="hero-stat-label">Content Types</span>
+          </div>
+          <div className="hero-stat">
+            <span className="hero-stat-num">18</span>
+            <span className="hero-stat-label">Questions</span>
+          </div>
+          <div className="hero-stat">
+            <span className="hero-stat-num">3</span>
+            <span className="hero-stat-label">Minutes</span>
+          </div>
         </div>
-        <div className="feature-card">
-          <div className="feature-icon">🕳️</div>
-          <h3>趣味测评</h3>
-          <p>专业又不严肃，看看你是什么级别的刷手</p>
-        </div>
-        <div className="feature-card">
-          <div className="feature-icon">📊</div>
-          <h3>雷达图谱</h3>
-          <p>多维度可视化展示，直观了解你的内容偏好</p>
+        <div className="hero-scroll-hint">
+          <span>Scroll</span>
+          <div className="hero-scroll-line" />
         </div>
       </div>
     </div>
   );
 }
 
+const TOPIC_LABELS = ['Beauty', 'Fashion', 'News', 'Cute', 'Food', 'Tech', 'Funny', 'Travel'];
+
 function Test() {
   const [current, setCurrent] = useState(0);
   const [scores, setScores] = useState<ScoreType>({ beauty: 0, ootd: 0, news: 0, cute: 0, food: 0, tech: 0, funny: 0, travel: 0 });
   const [history, setHistory] = useState<ScoreType[]>([]);
   const [animating, setAnimating] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const q = questions[current];
-  const progress = ((current) / questions.length) * 100;
+  const progress = (current / questions.length) * 100;
   const isFirst = current === 0;
   const isLast = current === questions.length - 1;
 
-  const handleSelect = (scores_delta: ScoreType) => {
+  const handleSelect = (scores_delta: ScoreType, idx: number) => {
     if (animating) return;
     setAnimating(true);
+    setSelectedIndex(idx);
 
     const newScores = {
       beauty: scores.beauty + scores_delta.beauty,
@@ -104,9 +111,10 @@ function Test() {
         setHistory(prev => [...prev, scores]);
         setScores(newScores);
         setCurrent(prev => prev + 1);
+        setSelectedIndex(null);
       }
       setAnimating(false);
-    }, 300);
+    }, 350);
   };
 
   const handlePrev = () => {
@@ -116,66 +124,67 @@ function Test() {
       setScores(prevScores);
       setHistory(prev => prev.slice(0, -1));
       setCurrent(prev => prev - 1);
+      setSelectedIndex(null);
     }
   };
 
   const handleNext = () => {
     if (isLast || animating) return;
     const neutralDelta: ScoreType = { beauty: 0, ootd: 0, news: 0, cute: 0, food: 0, tech: 0, funny: 0, travel: 0 };
-    handleSelect(neutralDelta);
+    handleSelect(neutralDelta, -1);
   };
 
   return (
-    <div className="page test-page">
-      <div className="test-header">
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
+    <div className="test-page">
+      <div className="test-left">
+        <p className="test-progress-label">Progress</p>
+        <div className="test-progress-bar">
+          <div className="test-progress-fill" style={{ width: `${progress}%` }} />
         </div>
-        <div className="progress-text">
-          <span>第 {current + 1} / {questions.length} 题</span>
-          <span className="progress-dim">你的刷手机人格正在形成...</span>
-        </div>
-      </div>
-      <div className="question-area">
-        <div className="question-icon">{current % 3 === 0 ? '🤔' : current % 3 === 1 ? '🫣' : '💭'}</div>
-        <h2 className="question-text">{q.text}</h2>
-        <div className="options-list">
-          {q.options.map((opt, i) => (
-            <button
-              key={i}
-              className={`option-btn ${animating ? 'disabled' : ''}`}
-              onClick={() => handleSelect(opt.scores)}
-            >
-              <span className="option-letter">{String.fromCharCode(65 + i)}</span>
-              <span className="option-text">{opt.text}</span>
-            </button>
+        <div className="test-counter">{String(current + 1).padStart(2, '0')}</div>
+        <p className="test-counter-label">of {questions.length}</p>
+        <p className="test-sidebar-title">Dimensions</p>
+        <div className="test-topics">
+          {TOPIC_LABELS.map((label, i) => (
+            <div key={i} className={`test-topic ${i < current + 1 ? 'active' : ''}`}>
+              <span className="test-topic-dot" />
+              {label}
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="nav-buttons">
-        <button
-          className="nav-btn prev"
-          onClick={handlePrev}
-          disabled={isFirst}
-        >
-          ← 上一题
-        </button>
-        {!isLast && (
-          <button
-            className="nav-btn next"
-            onClick={handleNext}
-            disabled={isLast}
-          >
-            跳过此题 →
+      <div className="test-right">
+        <h2 className="test-question">{q.text}</h2>
+        <div className="test-options">
+          {q.options.map((opt, i) => (
+            <button
+              key={i}
+              className={`test-option ${selectedIndex === i ? 'selected' : ''} ${animating && selectedIndex !== i ? 'disabled' : ''}`}
+              onClick={() => handleSelect(opt.scores, i)}
+              disabled={animating && selectedIndex !== i}
+            >
+              <span className="test-option-letter">{String.fromCharCode(65 + i)}</span>
+              <span className="test-option-text">{opt.text}</span>
+            </button>
+          ))}
+        </div>
+        <div className="test-nav">
+          <button className="test-nav-btn" onClick={handlePrev} disabled={isFirst}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M11 7H3M3 7L7 3M3 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Previous
           </button>
-        )}
-      </div>
-
-      <div className="floating-mini">
-        <div className="mini-icon">📱</div>
-        <div className="mini-icon">🕳️</div>
-        <div className="mini-icon">✨</div>
+          {!isLast && (
+            <button className="test-nav-btn primary" onClick={handleNext}>
+              Skip
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 7H11M11 7L7 3M11 7L7 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -184,39 +193,34 @@ function Test() {
 function RadarChart({ percentages }: { percentages: Record<string, number> }) {
   const categories = ['beauty', 'ootd', 'news', 'cute', 'food', 'tech', 'funny', 'travel'];
   const labels: Record<string, string> = {
-    beauty: '颜值',
-    ootd: '穿搭',
-    news: '时政',
-    cute: '萌宠',
-    food: '美食',
-    tech: '科技',
-    funny: '搞笑',
-    travel: '旅行',
+    beauty: 'Beauty',
+    ootd: 'Fashion',
+    news: 'News',
+    cute: 'Cute',
+    food: 'Food',
+    tech: 'Tech',
+    funny: 'Funny',
+    travel: 'Travel',
   };
   const colors: Record<string, string> = {
-    beauty: '#FF6B9D',
-    ootd: '#C44DFF',
-    news: '#4D9DFF',
-    cute: '#FF9D4D',
-    food: '#FFDD4D',
-    tech: '#4DFF9D',
-    funny: '#FF4D6B',
-    travel: '#4DD4FF',
+    beauty: '#C84B31',
+    ootd: '#8B7355',
+    news: '#4A5568',
+    cute: '#9F7AEA',
+    food: '#D69E2E',
+    tech: '#38A169',
+    funny: '#ED8936',
+    travel: '#4299E1',
   };
 
-  const cx = 200, cy = 200, r = 150;
+  const cx = 200, cy = 200, r = 130;
   const step = (2 * Math.PI) / categories.length;
 
   const points = categories.map((cat, i) => {
     const angle = -Math.PI / 2 + i * step;
     const pct = percentages[cat] || 0;
     const pr = (pct / 100) * r;
-    return {
-      x: cx + pr * Math.cos(angle),
-      y: cy + pr * Math.sin(angle),
-      cat,
-      pct,
-    };
+    return { x: cx + pr * Math.cos(angle), y: cy + pr * Math.sin(angle), cat, pct };
   });
 
   const borderPoints = categories.map((_, i) => {
@@ -224,7 +228,7 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
     return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
   });
 
-  const gridPaths = [0.3, 0.6, 0.9].map(level => {
+  const gridPaths = [0.33, 0.66, 1.0].map(level => {
     const pts = categories.map((_, i) => {
       const angle = -Math.PI / 2 + i * step;
       return `${cx + r * level * Math.cos(angle)},${cy + r * level * Math.sin(angle)}`;
@@ -235,62 +239,32 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
   const dataPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
 
   return (
-    <svg viewBox="0 0 400 400" className="radar-svg">
-      <defs>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
+    <svg viewBox="0 0 400 400" className="result-radar">
       {gridPaths.map((pts, i) => (
-        <polygon key={i} points={pts} fill="none" stroke="rgba(255,107,107,0.15)" strokeWidth="1" />
+        <polygon key={i} points={pts} fill="none" stroke="#E0DDD8" strokeWidth="1" />
       ))}
-      <polygon points={borderPoints.join(' ')} fill="none" stroke="rgba(255,107,107,0.25)" strokeWidth="1" />
+      <polygon points={borderPoints.join(' ')} fill="none" stroke="#E0DDD8" strokeWidth="1.5" />
       {categories.map((_, i) => {
         const angle = -Math.PI / 2 + i * step;
         return (
-          <line
-            key={i}
-            x1={cx}
-            y1={cy}
-            x2={cx + r * Math.cos(angle)}
-            y2={cy + r * Math.sin(angle)}
-            stroke="rgba(255,107,107,0.12)"
-            strokeWidth="1"
-          />
+          <line key={i} x1={cx} y1={cy}
+            x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)}
+            stroke="#E0DDD8" strokeWidth="1" />
         );
       })}
-      <path d={dataPath} fill="rgba(255, 107, 107, 0.2)" stroke="#FF6B6B" strokeWidth="2" filter="url(#glow)" />
+      <path d={dataPath} fill="rgba(200, 75, 49, 0.08)" stroke="#C84B31" strokeWidth="1.5" />
       {points.map((p, i) => (
-        <circle
-          key={i}
-          cx={p.x}
-          cy={p.y}
-          r="6"
-          fill={colors[p.cat]}
-          stroke="#fff"
-          strokeWidth="2"
-        />
+        <circle key={i} cx={p.x} cy={p.y} r="4" fill={colors[p.cat]} stroke="#fff" strokeWidth="1.5" />
       ))}
       {points.map((p, i) => {
         const angle = -Math.PI / 2 + i * step;
-        const labelR = r + 26;
+        const labelR = r + 24;
         const lx = cx + labelR * Math.cos(angle);
         const ly = cy + labelR * Math.sin(angle);
-        const anchor = Math.abs(lx - cx) < 20 ? 'middle' : lx > cx ? 'start' : 'end';
+        const anchor = Math.abs(lx - cx) < 15 ? 'middle' : lx > cx ? 'start' : 'end';
         return (
-          <text
-            key={i}
-            x={lx}
-            y={ly + 5}
-            textAnchor={anchor}
-            fill={colors[p.cat]}
-            fontSize="13"
-            fontWeight="bold"
-          >
+          <text key={i} x={lx} y={ly + 4} textAnchor={anchor}
+            fill={colors[p.cat]} fontSize="11" fontWeight="500">
             {labels[p.cat]}
           </text>
         );
@@ -306,25 +280,12 @@ function Result() {
   const [visible, setVisible] = useState(false);
 
   const labels: Record<string, string> = {
-    beauty: '颜值',
-    ootd: '穿搭',
-    news: '时政',
-    cute: '萌宠',
-    food: '美食',
-    tech: '科技',
-    funny: '搞笑',
-    travel: '旅行',
+    beauty: 'Beauty', ootd: 'Fashion', news: 'News', cute: 'Cute',
+    food: 'Food', tech: 'Tech', funny: 'Funny', travel: 'Travel',
   };
-
   const colors: Record<string, string> = {
-    beauty: '#FF6B9D',
-    ootd: '#C44DFF',
-    news: '#4D9DFF',
-    cute: '#FF9F43',
-    food: '#FFDD4D',
-    tech: '#4DFF9D',
-    funny: '#FF4D6B',
-    travel: '#4DD4FF',
+    beauty: '#C84B31', ootd: '#8B7355', news: '#4A5568', cute: '#9F7AEA',
+    food: '#D69E2E', tech: '#38A169', funny: '#ED8936', travel: '#4299E1',
   };
 
   useEffect(() => {
@@ -340,53 +301,50 @@ function Result() {
   }, []);
 
   if (!catType || !scores) {
-    return <div className="page result-page"><div className="loading">正在分析你的刷手人格...</div></div>;
+    return <div className="result-loading">Analyzing your profile...</div>;
   }
 
   const sortedCategories = Object.entries(percentages).sort((a, b) => b[1] - a[1]) as [string, number][];
 
   return (
-    <div className={`page result-page ${visible ? 'visible' : ''}`}>
+    <div className={`result-page ${visible ? 'visible' : ''}`}>
       <div className="result-hero">
-        <div className="result-emoji">{catType.emoji}</div>
-        <h1 className="result-title">你是 <span className="type-name">{catType.name}</span></h1>
-        <p className="result-desc">{catType.description}</p>
-      </div>
-
-      <div className="radar-section">
-        <h3 className="section-title">📊 内容偏好雷达</h3>
-        <div className="radar-container">
+        <div>
+          <p className="result-label">Your Content Persona</p>
+          <h1 className="result-type-name">{catType.name}</h1>
+          <p className="result-desc">{catType.description}</p>
+        </div>
+        <div className="result-radar-wrapper">
           <RadarChart percentages={percentages} />
         </div>
       </div>
 
-      <div className="category-section">
-        <h3 className="section-title">🎯 细分维度分析</h3>
-        <div className="category-list">
+      <div className="result-categories">
+        <div className="result-categories-header">
+          <span className="result-categories-title">Dimension Breakdown</span>
+        </div>
+        <div className="result-categories-list">
           {sortedCategories.map(([cat, pct]) => (
-            <div key={cat} className="category-item">
-              <div className="category-header">
-                <div className="category-info">
-                  <span className="category-dot" style={{ background: colors[cat] }} />
-                  <span className="category-label">{labels[cat]}</span>
-                  <span className="category-title">「{getTitleForCategory(cat, pct)}」</span>
-                </div>
-                <span className="category-pct">{pct}%</span>
+            <div key={cat} className="result-category-item">
+              <div className="result-cat-label">
+                <span className="result-cat-dot" style={{ background: colors[cat] }} />
+                <span className="result-cat-name">{labels[cat]}</span>
               </div>
-              <div className="category-bar">
-                <div
-                  className="category-fill"
-                  style={{ width: `${pct}%`, background: colors[cat] }}
-                />
+              <div className="result-cat-bar-wrap">
+                <div className="result-cat-bar" style={{ width: `${pct}%`, background: colors[cat] }} />
               </div>
+              <span className="result-cat-pct">{pct}%</span>
             </div>
           ))}
         </div>
       </div>
 
       <div className="result-actions">
-        <button className="restart-btn" onClick={() => { sessionStorage.removeItem('scroll_scores'); setPage('home'); }}>
-          🔄 重新测试
+        <button className="result-restart" onClick={() => { sessionStorage.removeItem('scroll_scores'); setPage('home'); }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7C2 4.24 4.24 2 7 2C8.38 2 9.63 2.56 10.54 3.46L9 5H13V1L11.54 2.46C10.27 1.23 8.72 0.5 7 0.5C3.41 0.5 0.5 3.41 0.5 7C0.5 10.59 3.41 13.5 7 13.5C10.59 13.5 13.5 10.59 13.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          Retake Test
         </button>
       </div>
     </div>
@@ -405,21 +363,14 @@ function App() {
 
   return (
     <div className="app">
-      <div className="bg-animated">
-        <div className="bg-blob bg-blob-1" />
-        <div className="bg-blob bg-blob-2" />
-        <div className="bg-blob bg-blob-3" />
-        <div className="bg-blob bg-blob-4" />
-        <div className="bg-grid" />
-      </div>
       <header className="app-header">
         <button className="header-logo" onClick={() => setPage('home')}>
-          🫣 Scroll Master
+          Scroll Master
         </button>
         <nav className="header-nav">
-          <button onClick={() => setPage('home')} className={page === 'home' ? 'active' : ''}>首页</button>
-          <button onClick={() => setPage('test')} className={page === 'test' ? 'active' : ''}>测试</button>
-          <button onClick={() => setPage('result')} className={page === 'result' ? 'active' : ''}>结果</button>
+          <button onClick={() => setPage('home')} className={page === 'home' ? 'active' : ''}>Home</button>
+          <button onClick={() => setPage('test')} className={page === 'test' ? 'active' : ''}>Test</button>
+          <button onClick={() => setPage('result')} className={page === 'result' ? 'active' : ''}>Result</button>
         </nav>
       </header>
       <main className="app-main">
@@ -428,7 +379,8 @@ function App() {
         {page === 'result' && <Result />}
       </main>
       <footer className="app-footer">
-        <p>🫣 Scroll Master 内容刷手鉴定 · 仅供娱乐 · {new Date().getFullYear()}</p>
+        <p>Scroll Master — Content Persona Test</p>
+        <p>{new Date().getFullYear()}</p>
       </footer>
     </div>
   );
