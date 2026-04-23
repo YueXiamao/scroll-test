@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { questions, type ScoreType } from './data/questions';
 import { calculateDimensionPercentages, getTitleForCategory, getOverallType } from './data/catTypes';
 import './App.css';
 
 type Page = 'home' | 'test' | 'result';
+const TOTAL = questions.length;
 
 function getPage(): Page {
   const hash = window.location.hash.replace('#', '');
@@ -73,11 +74,20 @@ function Test() {
   const [history, setHistory] = useState<ScoreType[]>([]);
   const [animating, setAnimating] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [qKey, setQKey] = useState(0);
+  const [optionsVisible, setOptionsVisible] = useState(false);
 
   const q = questions[current];
-  const progress = (current / questions.length) * 100;
+  const progress = (current / TOTAL) * 100;
   const isFirst = current === 0;
-  const isLast = current === questions.length - 1;
+  const isLast = current === TOTAL - 1;
+
+  // Reset options visibility on question change
+  useEffect(() => {
+    setOptionsVisible(false);
+    const t = setTimeout(() => setOptionsVisible(true), 60);
+    return () => clearTimeout(t);
+  }, [current]);
 
   const handleSelect = (scores_delta: ScoreType, idx: number) => {
     if (animating) return;
@@ -104,9 +114,10 @@ function Test() {
         setScores(newScores);
         setCurrent(prev => prev + 1);
         setSelectedIndex(null);
+        setQKey(k => k + 1);
       }
       setAnimating(false);
-    }, 400);
+    }, 360);
   };
 
   const handlePrev = () => {
@@ -117,12 +128,12 @@ function Test() {
       setHistory(prev => prev.slice(0, -1));
       setCurrent(prev => prev - 1);
       setSelectedIndex(null);
+      setQKey(k => k + 1);
     }
   };
 
   const handleNext = () => {
     if (isLast || animating || selectedIndex === null) return;
-    const q = questions[current];
     handleSelect(q.options[selectedIndex].scores, selectedIndex);
   };
 
@@ -138,26 +149,25 @@ function Test() {
           <div className="test-progress-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="test-counter">{String(current + 1).padStart(2, '0')}</div>
-        <p className="test-counter-live">第 {current + 1} 题，共 {questions.length} 题</p>
+        <p className="test-counter-live">第 {current + 1} 题，共 {TOTAL} 题</p>
         <div className="test-dots">
           {questions.map((_, i) => (
-            <div
-              key={i}
-              className={`test-dot ${i < current ? 'answered' : ''} ${i === current ? 'current' : ''}`}
-            />
+            <div key={i} className={`test-dot ${i < current ? 'answered' : ''} ${i === current ? 'current' : ''}`} />
           ))}
         </div>
       </div>
 
       <div className="test-right">
-        <h2 className="test-question">{q.text}</h2>
+        <h2 key={qKey} className={`test-question ${animating ? 'slide-out' : ''}`}>
+          {q.text}
+        </h2>
         <div className="test-options">
           {q.options.map((opt, i) => (
             <button
               key={i}
-              className={`test-option ${selectedIndex === i ? 'selected' : ''} ${animating && selectedIndex !== i ? 'disabled' : ''}`}
+              className={`test-option ${optionsVisible ? 'anim-in' : ''} ${selectedIndex === i ? 'selected' : ''}`}
               onClick={() => handleSelect(opt.scores, i)}
-              disabled={animating && selectedIndex !== i}
+              disabled={animating}
             >
               <span className="test-option-letter">{String.fromCharCode(65 + i)}</span>
               <span className="test-option-text">{opt.text}</span>
@@ -209,13 +219,12 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
     return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
   });
 
-  const gridPaths = [0.33, 0.66, 1.0].map(level => {
-    const pts = categories.map((_, i) => {
+  const gridPaths = [0.33, 0.66, 1.0].map(level =>
+    categories.map((_, i) => {
       const angle = -Math.PI / 2 + i * step;
       return `${cx + r * level * Math.cos(angle)},${cy + r * level * Math.sin(angle)}`;
-    });
-    return pts.join(' ');
-  });
+    }).join(' ')
+  );
 
   const dataPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
 
@@ -227,13 +236,9 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
       <polygon points={borderPoints.join(' ')} fill="none" stroke="#E0DDD8" strokeWidth="1.5" />
       {categories.map((_, i) => {
         const angle = -Math.PI / 2 + i * step;
-        return (
-          <line key={i} x1={cx} y1={cy}
-            x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)}
-            stroke="#E0DDD8" strokeWidth="1" />
-        );
+        return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="#E0DDD8" strokeWidth="1" />;
       })}
-      <path d={dataPath} fill="rgba(200, 75, 49, 0.08)" stroke="#C84B31" strokeWidth="1.5" />
+      <path d={dataPath} fill="rgba(200,75,49,0.08)" stroke="#C84B31" strokeWidth="1.5" />
       {points.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="4" fill={colors[p.cat]} stroke="#fff" strokeWidth="1.5" />
       ))}
@@ -243,22 +248,36 @@ function RadarChart({ percentages }: { percentages: Record<string, number> }) {
         const lx = cx + labelR * Math.cos(angle);
         const ly = cy + labelR * Math.sin(angle);
         const anchor = Math.abs(lx - cx) < 15 ? 'middle' : lx > cx ? 'start' : 'end';
-        return (
-          <text key={i} x={lx} y={ly + 4} textAnchor={anchor}
-            fill={colors[p.cat]} fontSize="11" fontWeight="500">
-            {labels[p.cat]}
-          </text>
-        );
+        return <text key={i} x={lx} y={ly + 4} textAnchor={anchor} fill={colors[p.cat]} fontSize="11" fontWeight="500">{labels[p.cat]}</text>;
       })}
     </svg>
   );
 }
 
+// Hook to trigger animation when element scrolls into view
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setInView(true); obs.disconnect(); }
+    }, { threshold });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
+
 function Result() {
-  const [catType, setCatType] = useState<{ name: string; emoji: string; description: string } | null>(null);
+  const [catType, setCatType] = useState<ReturnType<typeof getOverallType> | null>(null);
   const [percentages, setPercentages] = useState<Record<string, number>>({});
   const [scores, setScores] = useState<ScoreType | null>(null);
   const [visible, setVisible] = useState(false);
+
+  const tagsSection = useInView(0.1);
+  const insightsSection = useInView(0.1);
+  const quoteSection = useInView(0.1);
 
   const labels: Record<string, string> = {
     beauty: '颜值', ootd: '穿搭', news: '时政', cute: '萌宠',
@@ -293,6 +312,7 @@ function Result() {
         <div>
           <p className="result-label">你的内容人格</p>
           <h1 className="result-type-name">{catType.name}</h1>
+          <p className="result-tagline">{catType.tagline}</p>
           <div className="result-emoji-large">{catType.emoji}</div>
           <p className="result-desc">{catType.description}</p>
         </div>
@@ -301,6 +321,107 @@ function Result() {
         </div>
       </div>
 
+      {/* Section 01: 人格剖析 */}
+      <div className="result-section">
+        <div className="result-section-header">
+          <span className="result-section-num">01</span>
+          <span className="result-section-title">深层人格剖析</span>
+          <div className="result-section-divider" />
+        </div>
+        <div className="traits-grid">
+          <div className="trait-card visible">
+            <span className="trait-icon">🧠</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>性格底色</p>
+            {catType.personality.map((t, i) => (
+              <p key={i} className="trait-text" style={{ marginBottom: i < catType.personality.length - 1 ? '8px' : '20px' }}>{t}</p>
+            ))}
+            <span className="trait-icon">💪</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>核心优势</p>
+            {catType.strengths.map((t, i) => (
+              <p key={i} className="trait-text" style={{ marginBottom: i < catType.strengths.length - 1 ? '8px' : '20px' }}>{t}</p>
+            ))}
+            <span className="trait-icon">⚠️</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>盲区与隐患</p>
+            {catType.blindspots.map((t, i) => (
+              <p key={i} className="trait-text" style={{ marginBottom: i < catType.blindspots.length - 1 ? '8px' : '0' }}>{t}</p>
+            ))}
+          </div>
+          <div className="trait-card visible" style={{ transitionDelay: '0.1s' }}>
+            <span className="trait-icon">🔍</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>内容消费模式</p>
+            <p className="trait-text" style={{ marginBottom: '24px' }}>{catType.socialStyle}</p>
+            <span className="trait-icon">📱</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>最适合你的内容</p>
+            <p className="trait-text" style={{ marginBottom: '24px' }}>{catType.idealContent}</p>
+            <span className="trait-icon">🏆</span>
+            <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>你的常驻App</p>
+            <p className="trait-text">{catType.topApps}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Section 02: 内容偏好标签 */}
+      <div className="result-section" ref={tagsSection.ref}>
+        <div className="result-section-header">
+          <span className="result-section-num">02</span>
+          <span className="result-section-title">你最喜欢的内容</span>
+          <div className="result-section-divider" />
+        </div>
+        <div className="tags-cloud">
+          {catType.contentPreferences.map((tag, i) => (
+            <span
+              key={i}
+              className={`tag-item ${tagsSection.inView ? 'vis' : ''}`}
+              style={{ transitionDelay: `${i * 55}ms` }}
+            >
+              <span className="tag-dot" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 03: 核心洞察 */}
+      <div className="result-section" ref={insightsSection.ref}>
+        <div className="result-section-header">
+          <span className="result-section-num">03</span>
+          <span className="result-section-title">核心洞察</span>
+          <div className="result-section-divider" />
+        </div>
+        <div className="insight-list">
+          {[
+            { label: '信息获取风格', text: catType.personality[0] || '你刷手机不只是为了娱乐，更是一种自我认知的投射。' },
+            { label: '核心驱动力', text: catType.strengths[0] || '你选择什么内容，定义了你是什么样的人。' },
+            { label: '潜在风险', text: catType.blindspots[0] || '意识到自己的内容偏好盲区，是打破信息茧房的第一步。' },
+            { label: '成长建议', text: '不要只刷你喜欢的内容。偶尔走进陌生领域，你会发现更大的世界。' },
+          ].map((row, i) => (
+            <div
+              key={i}
+              className={`insight-row ${insightsSection.inView ? 'vis' : ''}`}
+              style={{ transitionDelay: `${i * 80}ms` }}
+            >
+              <span className="insight-label">{row.label}</span>
+              <span className="insight-text">{row.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 04: 金句 */}
+      <div className="result-section" ref={quoteSection.ref}>
+        <div className="result-section-header">
+          <span className="result-section-num">04</span>
+          <span className="result-section-title">给你的画像</span>
+          <div className="result-section-divider" />
+        </div>
+        <div className={`quote-block ${quoteSection.inView ? 'vis' : ''}`}>
+          <p className="quote-text">
+            你对{catType.topApps.split('>')[0].trim()}上瘾，不是你没有自制力，而是它们精准命中了你内心最深处的需求。理解这一点，比卸载 app 更有意义。
+          </p>
+        </div>
+      </div>
+
+      {/* 雷达图维度详情 */}
       <div className="result-categories">
         <p className="result-categories-title">维度细分</p>
         <div className="result-categories-list">
@@ -345,9 +466,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <button className="header-logo" onClick={() => setPage('home')}>
-          Scroll Master
-        </button>
+        <button className="header-logo" onClick={() => setPage('home')}>Scroll Master</button>
         <nav className="header-nav">
           <button onClick={() => setPage('home')} className={page === 'home' ? 'active' : ''}>首页</button>
           <button onClick={() => setPage('test')} className={page === 'test' ? 'active' : ''}>测试</button>
