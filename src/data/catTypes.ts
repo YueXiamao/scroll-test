@@ -3,16 +3,38 @@ import type { ScoreType } from './questions';
 export function calculateDimensionPercentages(scores: ScoreType): Record<string, number> {
   const total = scores.beauty + scores.ootd + scores.news + scores.cute + scores.food + scores.tech + scores.funny + scores.travel;
   if (total === 0) return { beauty: 50, ootd: 50, news: 50, cute: 50, food: 50, tech: 50, funny: 50, travel: 50 };
-  return {
-    beauty: Math.round((scores.beauty / total) * 100),
-    ootd: Math.round((scores.ootd / total) * 100),
-    news: Math.round((scores.news / total) * 100),
-    cute: Math.round((scores.cute / total) * 100),
-    food: Math.round((scores.food / total) * 100),
-    tech: Math.round((scores.tech / total) * 100),
-    funny: Math.round((scores.funny / total) * 100),
-    travel: Math.round((scores.travel / total) * 100),
+  const raw = {
+    beauty: (scores.beauty / total) * 100,
+    ootd: (scores.ootd / total) * 100,
+    news: (scores.news / total) * 100,
+    cute: (scores.cute / total) * 100,
+    food: (scores.food / total) * 100,
+    tech: (scores.tech / total) * 100,
+    funny: (scores.funny / total) * 100,
+    travel: (scores.travel / total) * 100,
   };
+  const rounded = {
+    beauty: Math.round(raw.beauty),
+    ootd: Math.round(raw.ootd),
+    news: Math.round(raw.news),
+    cute: Math.round(raw.cute),
+    food: Math.round(raw.food),
+    tech: Math.round(raw.tech),
+    funny: Math.round(raw.funny),
+    travel: Math.round(raw.travel),
+  };
+  const sum = Object.values(rounded).reduce((a, b) => a + b, 0);
+  if (sum === 100) return rounded;
+  // Find the largest decimal remainder and adjust to make sum = 100
+  const keys = Object.keys(rounded) as (keyof typeof raw)[];
+  const remainders = keys.map(k => ({ k, r: raw[k] - rounded[k] }));
+  remainders.sort((a, b) => b.r - a.r);
+  const diff = 100 - sum;
+  for (let i = 0; i < Math.abs(diff); i++) {
+    const sign = diff > 0 ? 1 : -1;
+    rounded[remainders[i].k] += sign;
+  }
+  return rounded;
 }
 
 export function getTitleForCategory(category: string, pct: number): string {

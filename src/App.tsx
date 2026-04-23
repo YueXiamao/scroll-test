@@ -329,7 +329,7 @@ function Result() {
           <div className="result-section-divider" />
         </div>
         <div className="traits-grid">
-          <div className="trait-card visible">
+          <div className="trait-card vis">
             <span className="trait-icon">🧠</span>
             <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>性格底色</p>
             {catType.personality.map((t, i) => (
@@ -346,7 +346,7 @@ function Result() {
               <p key={i} className="trait-text" style={{ marginBottom: i < catType.blindspots.length - 1 ? '8px' : '0' }}>{t}</p>
             ))}
           </div>
-          <div className="trait-card visible" style={{ transitionDelay: '0.1s' }}>
+          <div className="trait-card vis" style={{ transitionDelay: '0.1s' }}>
             <span className="trait-icon">🔍</span>
             <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--ink-4)', marginBottom: '10px' }}>内容消费模式</p>
             <p className="trait-text" style={{ marginBottom: '24px' }}>{catType.socialStyle}</p>
@@ -414,7 +414,7 @@ function Result() {
           <span className="result-section-title">给你的画像</span>
           <div className="result-section-divider" />
         </div>
-        <div className={`quote-block ${quoteSection.inView ? 'vis' : ''}`}>
+        <div className={`quote-block vis`}>
           <p className="quote-text">
             你对{catType.topApps.split('>')[0].trim()}上瘾，不是你没有自制力，而是它们精准命中了你内心最深处的需求。理解这一点，比卸载 app 更有意义。
           </p>
